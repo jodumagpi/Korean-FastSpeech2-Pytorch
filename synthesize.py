@@ -4,9 +4,6 @@ import numpy as np
 import hparams as hp
 import os
 
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]=hp.synth_visible_devices
-
 import argparse
 import re
 from string import punctuation
@@ -22,7 +19,7 @@ import codecs
 from g2pk import G2p
 from jamo import h2j
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda')
 
 def kor_preprocess(text):
     text = text.rstrip(punctuation)
@@ -85,6 +82,7 @@ def synthesize(model, vocoder, text, sentence, prefix=''):
     if vocoder is not None:
         if hp.vocoder.lower() == "vocgan":
             utils.vocgan_infer(mel_postnet_torch, vocoder, path=os.path.join(hp.test_path, '{}_{}_{}.wav'.format(prefix, hp.vocoder, sentence)))   
+            print('Model saved to {}_{}_{}.wav!'.format(prefix, hp.vocoder, sentence))
     
     utils.plot_data([(mel_postnet_torch[0].detach().cpu().numpy(), f0_output, energy_output)], ['Synthesized Spectrogram'], filename=os.path.join(hp.test_path, '{}_{}.png'.format(prefix, sentence)))
 
