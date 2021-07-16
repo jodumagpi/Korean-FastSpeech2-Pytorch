@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.multiprocessing as mp
 import numpy as np
 import hparams as hp
 import os
@@ -30,6 +31,10 @@ def pause(text):
 		else:
 			out += text[i]
 	return "".join(out)
+
+def split_text(text):
+    text = text.split(" ")
+    return [" ".join(text[i:i+4]) for i in range(0, len(text), 3)]
 
 def kor_preprocess(text):
     text = text.rstrip(punctuation)
@@ -87,15 +92,11 @@ def synthesize(model, vocoder, text, sentence, prefix=''):
     if not os.path.exists(hp.test_path):
         os.makedirs(hp.test_path)
 
-    Audio.tools.inv_mel_spec(mel_postnet_torch[0], os.path.join(hp.test_path, '{}_griffin_lim_{}.wav'.format(prefix, sentence)))
-
     if vocoder is not None:
         if hp.vocoder.lower() == "vocgan":
             utils.vocgan_infer(mel_postnet_torch, vocoder, path=os.path.join(hp.test_path, '{}_result.wav'.format(prefix)))   
-            print('Model saved to {}_{}_{}.wav!'.format(prefix, hp.vocoder, sentence))
+            print('{}_result.wav'.format(prefix))
     
-    utils.plot_data([(mel_postnet_torch[0].detach().cpu().numpy(), f0_output, energy_output)], ['Synthesized Spectrogram'], filename=os.path.join(hp.test_path, '{}_{}.png'.format(prefix, sentence)))
-
 if __name__ == "__main__":
     # Test
     parser = argparse.ArgumentParser()
@@ -109,11 +110,12 @@ if __name__ == "__main__":
     else:
         vocoder = None   
  
-    #kss
     g2p=G2p()
 
     print('Input sentence: ')
     sentence = input()
-    
-    text = kor_preprocess(sentence)
-    synthesize(model, vocoder, text, sentence, prefix='step_{}'.format(args.step))
+
+    sentence = split_text(sentence)
+    for e, s in enumerate(sentence):   
+        text = kor_preprocess(pause(s))
+        synthesize(model, vocoder, text, sentence, prefix='{}'.format(e))
