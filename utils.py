@@ -13,7 +13,7 @@ import hparams as hp
 import os
 import text
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda')
 
 
 def get_alignment(tier):
