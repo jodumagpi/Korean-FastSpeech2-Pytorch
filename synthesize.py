@@ -21,6 +21,16 @@ from jamo import h2j
 
 device = torch.device('cuda')
 
+def pause(text):
+	out = []
+	for i in range(len(text)):
+		if text[i:i+2] in  ['가 ', '이 ', '에 ', '는 ', '은 ', '를 ', '을 ', '로 ', '의 ']:
+			out += text[i]
+			out += ','
+		else:
+			out += text[i]
+	return "".join(out)
+
 def kor_preprocess(text):
     text = text.rstrip(punctuation)
     
@@ -81,11 +91,10 @@ def synthesize(model, vocoder, text, sentence, prefix=''):
 
     if vocoder is not None:
         if hp.vocoder.lower() == "vocgan":
-            utils.vocgan_infer(mel_postnet_torch, vocoder, path=os.path.join(hp.test_path, '{}_{}_{}.wav'.format(prefix, hp.vocoder, sentence)))   
+            utils.vocgan_infer(mel_postnet_torch, vocoder, path=os.path.join(hp.test_path, '{}_result.wav'.format(prefix)))   
             print('Model saved to {}_{}_{}.wav!'.format(prefix, hp.vocoder, sentence))
     
     utils.plot_data([(mel_postnet_torch[0].detach().cpu().numpy(), f0_output, energy_output)], ['Synthesized Spectrogram'], filename=os.path.join(hp.test_path, '{}_{}.png'.format(prefix, sentence)))
-
 
 if __name__ == "__main__":
     # Test
@@ -101,32 +110,10 @@ if __name__ == "__main__":
         vocoder = None   
  
     #kss
-    eval_sentence=['그는 괜찮은 척하려고 애쓰는 것 같았다','그녀의 사랑을 얻기 위해 애썼지만 헛수고였다','용돈을 아껴써라','그는 아내를 많이 아낀다','요즘 공부가 안돼요','한 여자가 내 옆에 앉았다']
-    train_sentence=['가까운 시일 내에 한번, 댁으로 찾아가겠습니다','우리의 승리는 기적에 가까웠다','아이들의 얼굴에는 행복한 미소가 가득했다','헬륨은 공기보다 가볍다','이것은 간단한 문제가 아니다']
-    test_sentence=['안녕하세요, 한동대학교 딥러닝 연구실입니다.', '이 프로젝트가 여러분에게 도움이 되었으면 좋겠습니다.', '시간이 촉박해요','이런, 큰일 났어','좀 더 먹지 그래?','제가 뭘 잘못했죠?','더 이상 묻지마']
-    
     g2p=G2p()
-    print('which sentence do you want?')
-    print('1.eval_sentence 2.train_sentence 3.test_sentence 4.create new sentence')
 
-    mode=input()
-    print('you went for mode {}'.format(mode))
-    if mode=='4':
-        print('input sentence')
-        sentence = input()
-    elif mode=='1':
-        sentence = eval_sentence
-    elif mode=='2':
-        sentence = train_sentence
-    elif mode=='3':
-        sentence = test_sentence
+    print('Input sentence: ')
+    sentence = input()
     
-    print('sentence that will be synthesized: ')
-    print(sentence)
-    if mode != '4':
-        for s in sentence:
-            text = kor_preprocess(s)
-            synthesize(model, vocoder, text, s, prefix='step_{}'.format(args.step))
-    else:
-        text = kor_preprocess(sentence)
-        synthesize(model, vocoder, text, sentence, prefix='step_{}'.format(args.step))
+    text = kor_preprocess(sentence)
+    synthesize(model, vocoder, text, sentence, prefix='step_{}'.format(args.step))
