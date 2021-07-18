@@ -132,7 +132,8 @@ def vocgan_infer(mel, vocoder, path):
         audio = audio.clamp(min=-hp.max_wav_value, max=hp.max_wav_value-1)
         audio = audio.short().cpu().detach().numpy()
 
-        wavfile.write(path, hp.sampling_rate, audio)
+        #wavfile.write(path, hp.sampling_rate, audio)
+        return audio
 
 
 def pad_1D(inputs, PAD=0):
@@ -242,4 +243,3 @@ def average_by_duration(x, durs):
         x_char[idx] = np.mean(values) if len(values) > 0 else 0.0  # np.mean([]) = nan.
 
     return x_char.astype(np.float32)
-
