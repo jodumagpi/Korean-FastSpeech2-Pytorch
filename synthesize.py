@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.multiprocessing as mp
+from scipy.io import wavfile
 import numpy as np
 import hparams as hp
 import os
@@ -22,10 +23,16 @@ from jamo import h2j
 
 device = torch.device('cuda')
 
+def cut_idx(signal):
+    for i in range(int(len(signal)/2), len(signal)):
+        if (np.absolute(signal[i:i+5000]) < 100).all():
+            return i
+    return len(signal)
+
 def pause(text):
 	out = []
 	for i in range(len(text)):
-		if text[i:i+2] in  ['가 ', '이 ', '에 ', '는 ', '은 ', '를 ', '을 ', '로 ', '의 ']:
+		if text[i:i+2] in  ['가 ', '이 ', '에 ', '는 ', '은 ']: #'를 ', '을 ' '의 '
 			out += text[i]
 			out += ','
 		else:
@@ -34,7 +41,16 @@ def pause(text):
 
 def split_text(text):
     text = text.split(" ")
-    return [" ".join(text[i:i+4]) for i in range(0, len(text), 3)]
+    texts = []
+    for i in range(1, len(text)):
+        text[i] = ";;"+text[i] if i % 4 == 0 else text[i]
+    for i in range(0, len(text), 4):
+        joint = " ".join(text[i:i+5])
+        texts.append(joint if not joint[:2] == ";;" else joint[2:] )
+    if len(texts[-1].split(" ")) == 1:
+        texts[-2] = texts[-2].split(";;")[0] + texts[-1]
+        del texts[-1]
+    return texts
 
 def kor_preprocess(text):
     text = text.rstrip(punctuation)
@@ -94,8 +110,7 @@ def synthesize(model, vocoder, text, sentence, prefix=''):
 
     if vocoder is not None:
         if hp.vocoder.lower() == "vocgan":
-            utils.vocgan_infer(mel_postnet_torch, vocoder, path=os.path.join(hp.test_path, '{}_result.wav'.format(prefix)))   
-            print('{}_result.wav'.format(prefix))
+            return utils.vocgan_infer(mel_postnet_torch, vocoder, path=os.path.join(""))   
     
 if __name__ == "__main__":
     # Test
@@ -116,6 +131,10 @@ if __name__ == "__main__":
     sentence = input()
 
     sentence = split_text(sentence)
+    cuts = []
     for e, s in enumerate(sentence):   
-        text = kor_preprocess(pause(s))
-        synthesize(model, vocoder, text, sentence, prefix='{}'.format(e))
+        text = kor_preprocess(s)
+        audio = synthesize(model, vocoder, text, sentence, prefix='{}'.format(e))
+        cuts.append(audio[:cut_idx(audio)])
+    joint = np.hstack(cuts)
+    wavfile.write("result.wav", hp.sampling_rate, joint)
